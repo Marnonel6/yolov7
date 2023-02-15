@@ -154,11 +154,13 @@ def detect(source, weights, device, img_size, iou_thres, conf_thres):
                 print(f"c1 = {c1}, c2 = {c2}")
                 print(f"x = {x}, y = {y}")
 
-                # get depth using x,y coordinates value in the depth matrix
-                profile_stre = profile.get_stream(rs.stream.color)
-                intr = profile_stre.as_video_stream_profile().get_intrinsics()
-                depth_coords = rs.rs2_deproject_pixel_to_point(intr, [x,y], depth_image[x][y])
-                print(f"depth_coord = {depth_coords[0]*depth_scale}  {depth_coords[1]*depth_scale}  {depth_coords[2]*depth_scale}")
+                if x < 480 and y < 480: #and depth_image[x][y] < 1000:
+                    # get depth using x,y coordinates value in the depth matrix
+                    profile_stre = profile.get_stream(rs.stream.color)
+                    intr = profile_stre.as_video_stream_profile().get_intrinsics()
+                    depth_coords = rs.rs2_deproject_pixel_to_point(intr, [x,y], depth_image[x][y])
+                    if depth_coords != [0.0,0.0,0.0]:
+                        print(f"depth_coord = {depth_coords[0]*depth_scale}  {depth_coords[1]*depth_scale}  {depth_coords[2]*depth_scale}")
 
             # Print time (inference + NMS)
             #print(f'{s}Done. ({(1E3 * (t2 - t1)):.1f}ms) Inference, ({(1E3 * (t3 - t2)):.1f}ms) NMS')
