@@ -31,6 +31,10 @@ def detect(source, weights, device, img_size, iou_thres, conf_thres):
     pipeline = rs.pipeline()
     profile = pipeline.start(config)
 
+    # Getting the depth sensor's depth scale (see rs-align example for explanation)
+    depth_sensor = profile.get_device().first_depth_sensor()
+    depth_scale = depth_sensor.get_depth_scale()
+
     # Allign depth frame to color
     align_to = rs.stream.color
     align = rs.align(align_to)
@@ -141,7 +145,20 @@ def detect(source, weights, device, img_size, iou_thres, conf_thres):
                     c = int(cls)  # integer class
                     label = f'{names[c]} {conf:.2f}'
                     plot_one_box(xyxy, im0, label=label, color=colors[int(cls)], line_thickness=2)
-                    plot_one_box(xyxy, depth_colormap, label=label, color=colors[int(cls)], line_thickness=2)  
+                    plot_one_box(xyxy, depth_colormap, label=label, color=colors[int(cls)], line_thickness=2)
+                    
+                    # Get box top left & bottom right coordinates
+                    c1, c2 = (int(xyxy[0]), int(xyxy[1])), (int(xyxy[2]), int(xyxy[3]))
+                x = int((c2[0]+c1[0])/2)
+                y = int((c2[1]+c1[1])/2)
+                print(f"c1 = {c1}, c2 = {c2}")
+                print(f"x = {x}, y = {y}")
+
+                # get depth using x,y coordinates value in the depth matrix
+                profile_stre = profile.get_stream(rs.stream.color)
+                intr = profile_stre.as_video_stream_profile().get_intrinsics()
+                depth_coords = rs.rs2_deproject_pixel_to_point(intr, [x,y], depth_image[x][y])
+                print(f"depth_coord = {depth_coords[0]*depth_scale}  {depth_coords[1]*depth_scale}  {depth_coords[2]*depth_scale}")
 
             # Print time (inference + NMS)
             #print(f'{s}Done. ({(1E3 * (t2 - t1)):.1f}ms) Inference, ({(1E3 * (t3 - t2)):.1f}ms) NMS')
@@ -164,7 +181,7 @@ if __name__ == '__main__':
 
     with torch.no_grad():
         # detect("0", "best.pt", device, img_size=640, iou_thres=0.45, conf_thres=0.50)
-        detect("0", "yolov7.pt", device, img_size=640, iou_thres=0.45, conf_thres=0.50)
+        detect("0", "yolov7.pt", device, img_size=640, iou_thres=0.45, conf_thres=0.80)
 
 # if __name__ == '__main__':
 #     parser = argparse.ArgumentParser()
